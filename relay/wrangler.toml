@@ -1,0 +1,19 @@
+name = "agent-village-relay"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+[[r2_buckets]]
+binding = "BOX"
+bucket_name = "agent-village-relay"
+
+# 같은 곳(IP, IPv6 는 /64)에서 같은 종류 요청을 1분에 120번 넘게 하면 잠깐 막는다 (읽기 포함, 도배·요금 폭탄 막기)
+[[ratelimits]]
+name = "LIMIT"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 120
+  period = 60
+
+# 매일 새벽 한 번: 90일 안 쓴 상자·지난 편지·지난 계수기 치우기, 전체 용량 다시 세기
+[triggers]
+crons = ["17 18 * * *"]
