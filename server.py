@@ -36,6 +36,7 @@ nb.DATA = DATA
 ic.DATA = DATA
 tk.DATA = DATA
 ar.DATA, ar.WEB_ART, ar.PORT = DATA, os.path.join(HERE, "web", "art"), PORT
+pk.PORT = PORT
 TAIL_BYTES = 400_000
 
 
@@ -578,7 +579,7 @@ def collect():
         # 오래 묵은 확인 요청(하루 넘게 손 안 댄 것)까지 다 들어오면 마을이 넘친다 → 하루 안 것만, 최대 6명
         visiting = (not inside) and visitors < 6 and (dismissed.get(sid) or 0) < (d.get("lastActivityAt") or 0) and (
             (bool(summ.get("needs_action")) and now - last < 86400) or
-            # 일을 끝낸 보고(completed)도 15분 동안은 들어와서 알린다 (2026-11-25 작곡가 3곡 완성 때 안 들어옴)
+            # 일을 끝낸 보고(completed)도 15분 동안은 들어와서 알린다 (11-25 끝낸 보고가 안 들어오던 일)
             (now - last < 900 and summ.get("status_category") in ("review_ready", "blocked", "completed")))
         visitors += visiting
         if jp and (inside or visiting):
@@ -738,8 +739,9 @@ def route_of(L, search=True):
         return t
     rt = (L.get("reply_to") or "").strip()
     if rt:
-        orig = pk.parse(os.path.join(pk.REPO, rt)) or pk.parse(os.path.join(pk.REPO, "archive", os.path.basename(rt))) \
-            or pk.parse(os.path.join(pk.REPO, "to-pickle", os.path.basename(rt)))
+        # reply_to 는 남이 적은 값 — 우편함 세 폴더 안 편지만 연다 (11-28 보안 검수 낮음 1)
+        cand = [pk.safe_path(rt), pk.safe_path("archive/" + os.path.basename(rt)), pk.safe_path("to-pickle/" + os.path.basename(rt))]
+        orig = next((o for o in (pk.parse(c) for c in cand if c) if o), None)
         if orig:
             return sender_of(orig, search)
     return None
@@ -780,7 +782,7 @@ def sender_of(letter, search=True):
         return memo[name]          # 못 찾았던 편지(None)도 다시 뒤지지 않는다 — 세션 기록 전체 grep 이 몇 분씩 걸린다
     if not search:
         return None          # 화면 요청에서는 오래 걸리는 기록 뒤지기를 하지 않는다 (1분 일꾼이 한다)
-    # 세션 기록(수십 GB)을 뒤지는 무거운 일이라 한 번에 하나만, 최근 2일 기록만 (맥 부하 원인이었다 — 11-26 맥용량관리 보고)
+    # 세션 기록(수십 GB)을 뒤지는 무거운 일이라 한 번에 하나만, 최근 2일 기록만 (맥 부하 원인이었다 — 11-26)
     if not _SENDER_LOCK.acquire(blocking=False):
         return None
     try:
@@ -837,7 +839,7 @@ def pickle_worker():
                 pk.publish_roster(film_view(agents), tree)     # 촬영 모드면 숨긴 주민은 명단에도 안 올린다
                 fw = load_forwarded()
                 note_pickle_replies()
-                for L in pk.letters():
+                for L in ([] if pk.STATE.get("tampered") else pk.letters()):   # 저장소가 편지 밖에서 바뀌면 자동 전달 멈춤
                     if L["box"] != "to-claude":
                         continue          # 보관함·보낸 편지는 볼 필요 없다 (예전엔 이것까지 보낸 이를 찾느라 몇 분씩 멈췄다)
                     rec = fw.get(L["file"])
@@ -865,7 +867,7 @@ def pickle_worker():
                         oid = enqueue({"to": a["id"], "text": pk.forward_text(L, a)})
                     fw[L["file"]] = {"order": oid, "to": a["id"], "toName": a["title"]}
                     # 보내자마자 표시를 남긴다 — 예전엔 바퀴 끝에서 한 번 저장해서, 그 사이 오류가 나거나 앱이 다시 켜지면
-                    # 같은 편지를 또 보냈다 (11-26 「정수기 방문 일정」 편지 4번 중복)
+                    # 같은 편지를 또 보냈다 (11-26 같은 편지 4번 중복)
                     save_forwarded(fw)
                     try:
                         talk_log("pickle", a["id"], (L.get("subject") or "") + " " + (L.get("body") or ""), "pickle")
@@ -2466,11 +2468,12 @@ def roster_text():
 
 def pickle_note():
     """지시에 「피클」이 나오면, 이미 떠 있던 세션도 바로 알아듣게 보내는 법을 붙인다 (새 세션은 pickle-mail 기술로 안다)."""
-    send = os.path.join(pk.REPO, "bridge", "send.sh")
-    return ("\n\n---\n[피클 우편함] 피클은 사장님 AI 비서입니다. 피클에게 보낼 때는 이 명령을 쓰세요(어느 폴더에서든 됨):\n"
-            f"bash {send} \"제목\" \"본문\"\n"
-            "끝에 SENT: 가 찍히면 보낸 것입니다. 피클 답장은 마을이 이 세션으로 다시 전해 줍니다. "
-            "비밀번호·개인정보는 쓰지 말고, 자세한 건 pickle-mail 기술을 보세요.")
+    # 우편함 저장소의 스크립트 대신 마을 로컬 창구로 보낸다 (비서가 저장소 스크립트를 바꿀 수 있으므로 — 11-28 보안 검수)
+    return ("\n\n---\n[AI 비서 우편함] 주인의 AI 비서(피클)에게 보낼 때는 이 명령을 쓰세요(어느 폴더에서든 됨):\n"
+            f"curl -s -X POST http://127.0.0.1:{PORT}/api/mailbox/send -H 'Content-Type: application/json' "
+            "-d '{\"subject\":\"제목\",\"body\":\"본문\",\"from_session\":\"<내 세션 id>\"}'\n"
+            "응답에 \"ok\": true 가 오면 보낸 것입니다(내 세션 id 는 curl -s http://127.0.0.1:"
+            f"{PORT}/api/roster 에서 내 이름으로 찾습니다). 비서 답장은 마을이 이 세션으로 다시 전해 줍니다. 비밀번호·개인정보는 쓰지 마세요.")
 
 
 def write_receipt(rc):

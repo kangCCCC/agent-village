@@ -49,7 +49,7 @@ else
 fi
 
 echo "④ 우체부 모드에 자료 폴더 경로 채우기"
-sed -i '' "s#__VILLAGE_DATA__#$DATA#" mod/village-mail/hooks/register.ts
+python3 -c 'import sys;p=sys.argv[1];s=open(p,encoding="utf-8").read();open(p,"w",encoding="utf-8").write(s.replace("__VILLAGE_DATA__",sys.argv[2]))' mod/village-mail/hooks/register.ts "$DATA"   # 경로에 # · & 가 있어도 안 깨지게
 grep -q "$DATA" mod/village-mail/hooks/register.ts && echo "  우체부 경로: $DATA"
 
 echo "⑤ 주민끼리 말 걸기 기술 (village-talk) 깔기"

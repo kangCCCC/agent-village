@@ -84,11 +84,13 @@ def main():
         bat = os.path.join(HERE, "에이전트빌리지.bat")
         with open(bat, "w", encoding="ascii", errors="ignore", newline="\r\n") as f:
             f.write('@echo off\r\ncd /d "%~dp0"\r\nstart "" "%~dp0.venv\\Scripts\\pythonw.exe" "%~dp0run.py"\r\n')
+        q = lambda v: str(v).replace("'", "''")      # 파워셸 작은따옴표 글에 넣을 때 ' 는 '' 로 (폴더 이름에 ' 가 있어도 안 깨지게)
+        pyw, HERE_q, run_q = q(pyw), q(HERE), q(os.path.join(HERE, "run.py"))
         ps = ("$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\\에이전트빌리지.lnk');"
-              f"$s.TargetPath='{pyw}';$s.Arguments='\"{os.path.join(HERE, 'run.py')}\"';$s.WorkingDirectory='{HERE}';")
+              f"$s.TargetPath='{pyw}';$s.Arguments='\"{run_q}\"';$s.WorkingDirectory='{HERE_q}';")
         ico = os.path.join(HERE, "app", "AppIcon.ico")
         if os.path.exists(ico):
-            ps += f"$s.IconLocation='{ico}';"
+            ps += f"$s.IconLocation='{q(ico)}';"
         ps += "$s.Save()"
         r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True)
         say("  바탕화면에 「에이전트빌리지」 바로가기를 만들었어요" if r.returncode == 0
