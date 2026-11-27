@@ -309,7 +309,9 @@ function frame(now){
       if(asleep(p.agent,st)){const k=(now/700)%1;ctx.fillStyle=`rgba(255,255,255,${1-k})`;ctx.font='7px monospace';ctx.fillText('z',p.x+6,p.y-24-k*8)}
     }});
   }
+  if(window.PET)PET.tick(dt,now,drawables);     // 마을 고양이 호두 (pet.js)
   drawables.sort((a,b)=>a.y-b.y).forEach(d=>d.f());
+  if(window.PET)PET.over(now);
   if(isNight()){ctx.fillStyle='rgba(30,20,70,.38)';ctx.fillRect(0,0,W,H)}
   placeLabels(now);
   requestAnimationFrame(frame);
@@ -1457,7 +1459,7 @@ pollArt();
 async function pollArtOnce(){try{const j=await (await fetch('/api/art')).json();if(j.bgVersion!==ART.bgVersion&&j.bgVersion)BG.src='/art/background.png?v='+j.bgVersion;ART=j;CAST=j.cast||{}}catch(e){}}
 function loadSprite(key,ver){
   if(SPRITES[key]&&SPRITES[key]._ver===ver)return;
-  const sp={_ver:ver};
+  const sp={_ver:ver,_key:key};
   for(const n of ['portrait','idle','work','walkA','walkB','raise','sleep','cheer','oops','tea','phone','wave']){const im=new Image();im.src=`/art/${key}/${n}.png${ver?'?v='+ver:''}`;sp[n]=im}
   SPRITES[key]=sp;
 }
@@ -1498,7 +1500,7 @@ function drawSprite(sp,p,st,now){
   else if(asleep(p.agent,st))im=sp.sleep;   // 자는 중: 쪼그려 앉아 눈 감은 그림 (없으면 서 있는 그림)
   else{const r=restPose(p,now);if(r!=='idle')im=sp[r]}   // 쉬는 중: 가끔 차·폰
   if(!ok(im))im=sp.idle;
-  const s=SPR_H/sp.idle.naturalHeight, w=im.naturalWidth*s, h=im.naturalHeight*s;
+  const s=SPR_H/sp.idle.naturalHeight*((ART.scales||{})[sp._key]||1), w=im.naturalWidth*s, h=im.naturalHeight*s;   // 캐릭터별 크기 비율
   const bob=((!p.moving&&st==='work')?Math.sin(now/300)*0.6:0)-jump;
   if(cheering)drawConfetti(p,now,h);
   ctx.save();ctx.imageSmoothingEnabled=true;
@@ -1742,11 +1744,19 @@ function openArt(id){
       ① <button data-c="copy">📋 그림 설명 복사</button> → ② 그 도구에 붙여 넣어 그림 받기 → ③ 받은 그림을 여기에 끌어다 놓거나 <button data-c="file">🖼 그림 올리기</button>
       <input type="file" id="artFile" accept="image/*" style="display:none">
       <textarea id="artPrompt" readonly style="display:none;height:70px;font-size:11px"></textarea></div>
+    ${castKey(id)?`<div class="artsize" style="margin-top:10px;font-size:12.5px">📏 지금 그림 크기 <input type="range" id="artScale" min="60" max="150" step="5" value="${Math.round(((ART.scales||{})[castKey(id)]||1)*100)}" style="vertical-align:middle;width:180px"> <b id="artScaleV">${Math.round(((ART.scales||{})[castKey(id)]||1)*100)}%</b> <button data-c="scale100" style="font-size:11px">100%로</button><br><small style="opacity:.7">이 그림을 입은 주민 모두에게 적용돼요. 움직이면 마을에서 바로 보여요.</small></div>`:''}
     ${list?`<p style="font-size:12.5px;margin-top:10px">또는 이미 그려 둔 캐릭터로 바꾸기</p><div class="agrid">${list}</div>`:''}
     <div class="cbtn">${cur?'<button data-c="none">도트로 되돌리기</button>':''}<button data-c="no">닫기</button><button data-c="new">✏️ 새로 그리기</button></div>
     <div class="cnote"></div></div>`;
   dlg.style.display='flex';
   const note=dlg.querySelector('.cnote');
+  // 📏 크기 비율: 움직이는 동안은 화면에만 바로 반영하고, 손을 떼면 저장한다
+  {const sl=dlg.querySelector('#artScale'), k=castKey(id);
+    if(sl&&k){const show=v=>{ART.scales={...(ART.scales||{}),[k]:v/100};dlg.querySelector('#artScaleV').textContent=v+'%'};
+      sl.oninput=()=>show(+sl.value);
+      const save=async v=>{const r=await mbPost('/api/art/scale',{key:k,scale:v/100});if(r&&r.error)toast(r.error)};
+      sl.onchange=()=>save(+sl.value);
+      const b100=dlg.querySelector('[data-c="scale100"]');if(b100)b100.onclick=e=>{e.stopPropagation();sl.value=100;show(100);save(100)}}}
   // 그려 온 그림 받기: 파일 고르기 또는 끌어다 놓기 → 마을이 6칸을 잘라 입힌다
   const upload=async f=>{
     if(!f||!/^image\//.test(f.type||'')&&!/\.(png|jpe?g|webp|heic)$/i.test(f.name||'')){note.textContent='그림 파일을 올려 주세요';return}

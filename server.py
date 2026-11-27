@@ -1302,7 +1302,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return
         if self.path.startswith("/api/art"):
             bgp = os.path.join(ar.art_dir(), "background.png")
-            return send_json(self, {"cast": {**ar.cast(), **{g["id"]: g["id"] for g in neighbor_guests()}}, "characters": ar.characters(), "jobs": ar.jobs(),
+            return send_json(self, {"cast": {**ar.cast(), **{g["id"]: g["id"] for g in neighbor_guests()}}, "characters": ar.characters(), "jobs": ar.jobs(), "scales": ar.scales(),
                                     "bgVersion": int(os.path.getmtime(bgp)) if os.path.exists(bgp) else 0,
                                     "artist": setting("artist", ""), "ownerName": setting("ownerName", "사장님"),
                                     "backgrounds": ar.bg_list()})
@@ -1488,6 +1488,11 @@ class Handler(SimpleHTTPRequestHandler):
                         keys = [k for k in keys if k in req["keys"]]
                     n = sum(ar.queue_poses(k, poses, bool(req.get("force"))) for k in keys)
                     return send_json(self, {"ok": True, "queued": n, "state": ar.pose_state()})
+                if self.path == "/api/art/scale":
+                    try:
+                        return send_json(self, {"ok": True, "scale": ar.set_scale(req.get("key"), req.get("scale", 1))})
+                    except (TypeError, ValueError) as e:
+                        return send_json(self, {"error": str(e)[:200]}, 400)
                 if self.path == "/api/art/assign":
                     sid = str(req.get("id", ""))
                     if not valid_id(sid):

@@ -41,8 +41,27 @@ BG = ("Top-down three-quarter view game map of a cozy, cute fantasy RPG village 
       "along the edges, flower patches, and plenty of open flat grass for characters to stand. ")
 
 
+_SEEDED = False
+
+
 def art_dir():
+    global _SEEDED
     d = os.path.join(DATA, "art")
+    if os.path.isdir(d) and not _SEEDED and WEB_ART and os.path.isdir(WEB_ART):
+        # 이미 깔린 마을을 업데이트했을 때: 앱에 새로 든 캐릭터(스킨 묶음 s_NN 등)만 자료 폴더에 더한다 (11-28)
+        _SEEDED = True
+        for name in os.listdir(WEB_ART):
+            s_, t = os.path.join(WEB_ART, name), os.path.join(d, name)
+            if os.path.isdir(s_) and os.path.isfile(os.path.join(s_, "idle.png")) and not os.path.exists(t):
+                shutil.copytree(s_, t)
+        ws, ds = os.path.join(WEB_ART, "scales.json"), os.path.join(d, "scales.json")
+        if os.path.isfile(ws):
+            cur = _jread(ds, {}) if os.path.exists(ds) else {}
+            add = {k: v for k, v in _jread(ws, {}).items() if k not in cur}
+            if add:
+                cur.update(add)
+                with open(ds, "w", encoding="utf-8") as f:
+                    json.dump(cur, f, ensure_ascii=False)
     if not os.path.isdir(d):
         os.makedirs(d, exist_ok=True)
         if WEB_ART and os.path.isdir(WEB_ART):          # 처음: 앱에 든 그림을 씨앗으로
@@ -73,6 +92,26 @@ def _jwrite(path, obj):
 
 def cast():
     return _jread(os.path.join(art_dir(), "cast.json"), {})
+
+
+def scales():
+    """캐릭터별 크기 비율 {그림 이름: 0.6~1.5} — 그림마다 키가 들쭉날쭉해서 사장님이 맞춘다 (11-27)."""
+    return _jread(os.path.join(art_dir(), "scales.json"), {})
+
+
+def set_scale(key, v):
+    key = str(key or "")
+    if not re.fullmatch(r"[\w\-]{1,60}", key):
+        raise ValueError("그림 이름이 맞지 않습니다")
+    v = round(min(2.0, max(0.6, float(v))), 2)   # 동물은 200% 까지 (주민 막대는 150% 까지)
+    with LOCK:
+        c = scales()
+        if abs(v - 1) < 0.001:
+            c.pop(key, None)
+        else:
+            c[key] = v
+        _jwrite(os.path.join(art_dir(), "scales.json"), c)
+    return v
 
 
 def set_cast(sid, key):

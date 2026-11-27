@@ -3,6 +3,12 @@
 클로드 앱(코드 탭)의 세션들을 RPG 마을 주민으로 보여 주고, 주민을 눌러 일을 시키는 앱입니다.
 코덱스·제미나이 주민도 함께 살 수 있습니다.
 
+## 내려받기 (둘 중 하나)
+
+- **기본판** (도트 주민, 가벼움 12MB): [agent-village.zip](https://github.com/kangCCCC/agent-village/releases/download/v1.0/agent-village.zip)
+- **스킨 포함판** (그려 둔 캐릭터 25명 + 기본판 전부, 64MB): [agent-village-skins.zip](https://github.com/kangCCCC/agent-village/releases/download/v1.0/agent-village-skins.zip)
+  - 주민 우클릭 → 「캐릭터 바꾸기」에서 골라 입힙니다. 이미 기본판을 깔았다면 스킨판을 덮어 깔기만 하면 캐릭터가 더해집니다.
+
 ## 설치
 
 **맥** — 이 폴더를 `~/Documents/agent-village` 에 두고 터미널에서:
@@ -16,6 +22,10 @@ bash ~/Documents/agent-village/install.sh
 **리눅스** — `python3 install.py`
 
 설치 뒤 할 일(우체부 붙이기 등)은 [HANDOFF.md](HANDOFF.md) 를 보세요. 클로드 코드 세션에게 「HANDOFF.md 대로 설치해 줘」라고 해도 됩니다.
+
+## 코덱스 · 제미나이 · AI 비서 연결
+
+코덱스 주민(챗GPT 요금제), 제미나이 주민(구글 안티그래비티), 피클 같은 나만의 AI 비서와 잇는 법은 [연결하기.md](연결하기.md) 에 있습니다.
 
 ## 일촌 맺기
 
