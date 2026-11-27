@@ -46,7 +46,18 @@ def tool_env(**extra):
 
 def find_exe(name):
     """실행 파일의 온전한 경로. 못 찾으면 이름 그대로 (그러면 실행할 때 '없음' 오류가 난다)."""
-    return shutil.which(name, path=tool_path()) or name
+    hit = shutil.which(name, path=tool_path())
+    if hit or not (IS_WIN and name == "claude"):
+        return hit or name
+    # 윈도우에 데스크톱 앱만 있으면 claude 명령이 PATH 에 없다 → 앱이 들고 있는 claude.exe 를 찾아 본다
+    import glob as _g
+    local = os.environ.get("LOCALAPPDATA") or os.path.join(HOME, "AppData", "Local")
+    exes = []
+    for pat in (os.path.join(local, "Claude-Data", "*", "**", "claude.exe"), os.path.join(local, "AnthropicClaude", "**", "claude.exe"),
+                os.path.join(local, "Programs", "claude*", "**", "claude.exe")):
+        exes += _g.glob(pat, recursive=True)
+    exes = [e for e in exes if os.path.isfile(e) and os.path.getsize(e) > 5_000_000]   # 작은 실행기 말고 본체
+    return max(exes, key=os.path.getmtime) if exes else name
 
 
 def launch_prefix(exe):
@@ -75,8 +86,20 @@ def claude_app_sessions():
     if IS_MAC:
         return os.path.join(HOME, "Library", "Application Support", "Claude", "claude-code-sessions")
     if IS_WIN:
-        return os.path.join(os.environ.get("APPDATA") or os.path.join(HOME, "AppData", "Roaming"),
-                            "Claude", "claude-code-sessions")
+        # 윈도우는 설치 방식(스토어판·설치판)에 따라 자리가 다르다 (11-28 실제 윈도우 PC:
+        # %LOCALAPPDATA%\Claude-Data\claude_<무작위>\claude-code-sessions). 후보 중 실제로 세션 파일이 있는 곳을 고른다
+        import glob as _g
+        roam = os.environ.get("APPDATA") or os.path.join(HOME, "AppData", "Roaming")
+        local = os.environ.get("LOCALAPPDATA") or os.path.join(HOME, "AppData", "Local")
+        cands = [os.path.join(roam, "Claude", "claude-code-sessions")]
+        for pat in (os.path.join(local, "Claude-Data", "*", "claude-code-sessions"), os.path.join(local, "Claude*", "claude-code-sessions"),
+                    os.path.join(local, "Packages", "*Claude*", "LocalCache", "Roaming", "Claude", "claude-code-sessions"),
+                    os.path.join(roam, "Claude*", "claude-code-sessions")):
+            cands += _g.glob(pat)
+        live = [c for c in cands if os.path.isdir(c) and _g.glob(os.path.join(c, "*", "*", "local_*.json"))]
+        if live:
+            return max(live, key=lambda c: max(os.path.getmtime(f) for f in _g.glob(os.path.join(c, "*", "*", "local_*.json"))))
+        return next((c for c in cands if os.path.isdir(c)), cands[0])
     return os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"),
                         "Claude", "claude-code-sessions")
 

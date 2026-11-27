@@ -50,7 +50,10 @@ uv --version || echo "uv 없으면 python3 venv 로 대신함"
 4. 로그: 윈도우 `%LOCALAPPDATA%\AgentVillage\AgentVillage.log`, 리눅스 `~/.local/state/agent-village/AgentVillage.log`.
 
 윈도우에서 안 되는 것: 「⏺ 마을 녹화」(맥 화면 녹화 기능을 씀). 윈도우 기본 화면 녹화(Win+Alt+R)를 쓰면 된다.
-윈도우에서 주의: 클로드 데스크톱 앱이 세션 정보를 두는 자리는 `%APPDATA%\Claude\claude-code-sessions` 로 본다. 주민 목록이 비면 이 자리부터 확인한다.
+윈도우에서 주의:
+- 클로드 데스크톱 앱이 세션 정보를 두는 자리는 설치 방식마다 다르다. 마을이 `%APPDATA%\Claude\claude-code-sessions`, `%LOCALAPPDATA%\Claude-Data\<무작위>\claude-code-sessions` 등을 자동으로 찾는다(실제 윈도우 PC는 뒤쪽이었다). 주민이 0명이면 `local_*.json` 파일이 어디 있는지 찾아 알려 줄 것.
+- 데스크톱 앱만 깔려 있으면 `claude` 명령이 없어 「새 주민 만들기」가 안 된다 → `npm install -g @anthropic-ai/claude-code`.
+- 지시를 보내려면 우체부 모드를 붙여야 한다(4절). 일하는 세션 말고 한가한 전용 세션에 붙일 것.
 
 ## 3-2. 일촌 맺기 (처음 켤 때 물어봄)
 

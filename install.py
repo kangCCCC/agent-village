@@ -31,7 +31,9 @@ def main():
     say("① 준비물 확인")
     say("  파이썬 %d.%d 있음" % sys.version_info[:2])
     say("  깃: " + ("있음" if which("git") else "없음 → 이웃·일촌 기능을 쓰려면 git-scm.com 에서 Git 을 까세요"))
-    say("  클로드: " + ("있음" if which("claude") else "없음 → 마을이 주민(세션)을 만들려면 Claude Code 가 필요합니다"))
+    say("  클로드 명령: " + ("있음" if which("claude") else "없음 → 마을이 새 주민을 직접 만들려면 필요합니다.\n"
+        "    데스크톱 앱만 깔려 있으면 기존 세션은 보이지만 「새 주민 만들기」는 안 됩니다.\n"
+        "    깔기: npm install -g @anthropic-ai/claude-code  (노드가 없으면 nodejs.org 에서 먼저)"))
     say("  코덱스: " + ("있음" if which("codex") else "없음 (코덱스 주민은 못 만듦)"))
 
     say("② 자료 폴더와 기본 설정")
